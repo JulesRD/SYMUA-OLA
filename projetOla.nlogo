@@ -1,10 +1,12 @@
 breed [supporters supporter]
 
 supporters-own [
-  standing?      ; Variable pour indiquer si un supporter est debout
-  time-standing  ; Variable pour suivre le temps pendant lequel un supporter est debout
-  cooldown       ; Variable pour suivre le temps de cooldown avant de pouvoir se relever
-  vision-field   ; Variable pour stocker le champ de vision du supporter
+  standing?              ; Variable pour indiquer si un supporter est debout
+  time-standing          ; Variable pour suivre le temps pendant lequel un supporter est debout
+  cooldown               ; Variable pour suivre le temps de cooldown avant de pouvoir se relever
+  vision-field           ; Variable pour stocker le champ de vision du supporter
+  type-supporter         ; Type du supporter (ex: "enthousiaste", "moyen", "passif")
+  seuil-individuel       ; Seuil personnel pour se lever
 ]
 
 to setup-agents
@@ -47,6 +49,20 @@ to setup-agents
               [-1 -1] [0 -1] [1 -1] [2 -1]
             ]
           ]
+        ]
+      ]
+      let rand random-float 1
+      let val rand * enthousiasme
+      ifelse val >= 0.8 [
+        set type-supporter "enthousiaste"
+        set seuil-individuel 0.5
+      ] [
+        ifelse val >= 0.3 [
+          set type-supporter "moyen"
+          set seuil-individuel 1
+        ] [
+          set type-supporter "passif"
+          set seuil-individuel 1.5
         ]
       ]
     ]
@@ -108,7 +124,7 @@ to check-neighbors
             ]
         ]
         let total-neighbors length filter [ [coord] -> any? turtles-on patch (pxcor + item 0 coord) (pycor + item 1 coord) ] vision-field
-        if total-neighbors > 0 and standing-neighbors / total-neighbors >= seuil-supporter [
+        if total-neighbors > 0 and standing-neighbors / total-neighbors >= seuil-supporter * seuil-individuel [
           set standing? true
           set color red
         ]
@@ -304,6 +320,21 @@ start-radius
 10
 5.0
 1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+293
+372
+465
+405
+enthousiasme
+enthousiasme
+0
+3
+0.0
+0.1
 1
 NIL
 HORIZONTAL
@@ -650,7 +681,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.4.0
+NetLogo 6.0.4
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
