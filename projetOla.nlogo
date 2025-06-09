@@ -59,22 +59,12 @@ to setup
   setup-agents
   import-pcolors "Stade.png"  ; Charger l'image du stade normal
 
-  ask one-of supporters [
-    set standing? true
-    set color red
-    ask turtles-on neighbors [
-      set standing? true
-      set color red
-      ask turtles-on neighbors [
-        set standing? true
-        set color red
-      ]
-    ]
-  ]
+
   reset-ticks
 end
 
 to go
+  maybe-trigger-wave
   update-standing-supporters
   check-neighbors
   tick
@@ -126,6 +116,28 @@ to check-neighbors
     ]
   ]
 end
+
+to maybe-trigger-wave
+  if not any? supporters with [standing?] [
+    if random-float 1 < proba-demarrage [
+      let desired-size (min-group-size + random (max-group-size - min-group-size + 1))
+      ;; on choisit d'abord un supporter « seed »
+      let seed one-of supporters
+      ;; on récupère tous les supporters dans un rayon start-radius autour de seed :
+      let local-group supporters with [ distance seed <= start-radius ]
+      ;; on vérifie qu'il y en a au moins min-group-size :
+      if count local-group >= min-group-size [
+        let actual-size min (list (count local-group) desired-size)
+        ask n-of actual-size local-group [
+          set standing? true
+          set color red
+          set time-standing 0
+          set cooldown 0
+        ]
+      ]
+    ]
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 511
@@ -172,10 +184,10 @@ NIL
 1
 
 MONITOR
-322
-129
-443
-174
+352
+140
+473
+185
 NIL
 count supporters
 17
@@ -183,10 +195,10 @@ count supporters
 11
 
 BUTTON
-229
-84
-292
-117
+361
+89
+424
+122
 Go
 go
 T
@@ -200,10 +212,10 @@ NIL
 1
 
 SLIDER
-217
-239
-389
-272
+295
+212
+467
+245
 seuil-supporter
 seuil-supporter
 0
@@ -215,10 +227,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-185
-339
-357
-372
+295
+252
+467
+285
 temps-debout
 temps-debout
 0
@@ -230,15 +242,67 @@ NIL
 HORIZONTAL
 
 SLIDER
-251
-446
-456
-479
+281
+293
+486
+326
 cooldown-apres-debout
 cooldown-apres-debout
 0
 300
 76.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+104
+132
+283
+165
+proba-demarrage
+proba-demarrage
+0
+1
+0.35
+0.01
+1
+%
+HORIZONTAL
+
+INPUTBOX
+105
+170
+254
+230
+min-group-size
+3.0
+1
+0
+Number
+
+INPUTBOX
+105
+234
+254
+294
+max-group-size
+10.0
+1
+0
+Number
+
+SLIDER
+105
+95
+277
+128
+start-radius
+start-radius
+1
+10
+5.0
 1
 1
 NIL
