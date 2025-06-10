@@ -1,3 +1,9 @@
+globals [
+  score-violet
+  score-orange
+
+]
+
 breed [supporters supporter]
 
 supporters-own [
@@ -8,6 +14,44 @@ supporters-own [
   type-supporter         ; Type du supporter (ex: "enthousiaste", "moyen", "passif")
   seuil-individuel       ; Seuil personnel pour se lever
 ]
+
+breed [joueurs joueur]
+joueurs-own [
+  team               ; "violet" ou "orange"
+]
+
+
+to setup-joueurs
+  ;; 1) sélectionner tous les patchs verts
+  let verts patches with [pcolor = 63.7]
+
+  ;; 2) placer les violets
+
+  let violets n-of 11 verts
+  ask violets [
+    sprout-joueurs 1 [
+      set team "violet"
+      set shape "person"
+      set color violet
+    ]
+  ]
+
+  ;; 3) re-filtrer les verts (ceux-là n'ont pas encore de joueur)
+  let libres patches with [
+    pcolor = 63.7 and not any? joueurs-here
+  ]
+
+  ;; 4) placer les oranges
+  let oranges n-of 11 libres
+  ask oranges [
+    sprout-joueurs 1 [
+      set team "orange"
+      set shape "person"
+      set color orange
+    ]
+  ]
+end
+
 
 to setup-agents
   ask patches with [(pcolor <= 15 and pcolor >= 14) or (pcolor <= 65 and pcolor >= 64) or (pcolor <= 105 and pcolor >= 104) or pcolor = black] [
@@ -69,18 +113,51 @@ to setup-agents
   ]
 end
 
+
+
 to setup
   clear-all
   import-pcolors "Stade_Zones.png"  ; Charger l'image des zones du stade
   setup-agents
   import-pcolors "Stade.png"  ; Charger l'image du stade normal
+  setup-joueurs
 
+  set score-violet 0
+  set score-orange 0
 
   reset-ticks
 end
 
 to go
-  maybe-trigger-wave
+  ;; déplacement des joueurs
+  ask joueurs [
+    ;; direction aléatoire
+    right random 360
+    ;; avancer 1 seulement si sur un patch vert
+    let dest patch-ahead 3
+    if dest != nobody and [pcolor] of dest = 63.7 [
+      move-to dest
+    ]
+  ]
+
+ ;; tentative de but
+ ask joueurs [
+  if random-float 1 < scoring-prob [
+    ;; on incrémente le score selon l’équipe
+    ifelse team = "violet" [
+      set score-violet score-violet + 1
+    ] [
+      set score-orange score-orange + 1
+    ]
+    ;; déclenchement éventuel de la ola
+    if random-float 1 < ola-prob [
+      maybe-trigger-wave
+    ]
+  ]
+]
+
+
+
   update-standing-supporters
   check-neighbors
   tick
@@ -293,7 +370,7 @@ INPUTBOX
 254
 230
 min-group-size
-3.0
+40.0
 1
 0
 Number
@@ -304,7 +381,7 @@ INPUTBOX
 254
 294
 max-group-size
-10.0
+100.0
 1
 0
 Number
@@ -325,19 +402,56 @@ NIL
 HORIZONTAL
 
 SLIDER
-293
-372
-465
-405
-enthousiasme
-enthousiasme
+85
+363
+257
+396
+scoring-prob
+scoring-prob
 0
-3
-0.0
+1
+0.03
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+82
+420
+254
+453
+ola-prob
+ola-prob
+0
+1
+0.6
 0.1
 1
 NIL
 HORIZONTAL
+
+MONITOR
+1095
+52
+1234
+97
+Score équipe violet
+score-violet
+17
+1
+11
+
+MONITOR
+1235
+52
+1385
+97
+Score équipe orange
+score-orange
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -681,7 +795,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.4
+NetLogo 6.3.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
