@@ -156,7 +156,8 @@ to go
   ]
 ]
 
-  update-seuils-individuels
+
+
   update-standing-supporters
   check-neighbors
   tick
@@ -227,14 +228,6 @@ to maybe-trigger-wave
           set cooldown 0
         ]
       ]
-    ]
-  ]
-end
-
-to update-seuils-individuels
-  ask supporters [
-    if seuil-individuel < 1 [
-      set seuil-individuel min (list 1 (seuil-individuel + 0.005))
     ]
   ]
 end
@@ -320,7 +313,7 @@ seuil-supporter
 seuil-supporter
 0
 1
-0.5
+0.31
 0.01
 1
 NIL
