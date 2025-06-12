@@ -196,7 +196,7 @@ to check-neighbors
             let posY item 1 pos
             let neighbor patch (pxcor + posX) (pycor + posY)
             if any? turtles-on neighbor [
-              ask turtles-on neighbor [
+              ask supporters-on neighbor [
                 if standing? [ set standing-neighbors standing-neighbors + 1 ]
               ]
             ]
