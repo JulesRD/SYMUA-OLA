@@ -7,12 +7,13 @@ globals [
 breed [supporters supporter]
 
 supporters-own [
-  standing?              ; Variable pour indiquer si un supporter est debout
-  time-standing          ; Variable pour suivre le temps pendant lequel un supporter est debout
-  cooldown               ; Variable pour suivre le temps de cooldown avant de pouvoir se relever
-  vision-field           ; Variable pour stocker le champ de vision du supporter
-  type-supporter         ; Type du supporter (ex: "enthousiaste", "moyen", "passif")
-  seuil-individuel       ; Seuil personnel pour se lever
+  standing?                 ; Variable pour indiquer si un supporter est debout
+  time-standing             ; Variable pour suivre le temps pendant lequel un supporter est debout
+  cooldown                  ; Variable pour suivre le temps de cooldown avant de pouvoir se relever
+  vision-field              ; Variable pour stocker le champ de vision du supporter
+  type-supporter            ; Type du supporter (ex: "enthousiaste", "moyen", "passif")
+  seuil-individuel          ; Seuil personnel pour se lever
+  memory-wave-participation ; Nombre de fois que le supporter s'est levé
 ]
 
 breed [joueurs joueur]
@@ -61,6 +62,7 @@ to setup-agents
       set standing? false  ; Initialement, tous les supporters sont assis
       set time-standing 0  ; Initialiser le temps debout
       set cooldown 0  ; Initialiser le cooldown
+      set memory-wave-participation 0
       ; Définir le champ de vision en fonction de la zone
       ifelse (pcolor <= 15 and pcolor >= 14) [ ; rouge - en haut (a gauche et en dessous)
         set vision-field [
@@ -200,9 +202,10 @@ to check-neighbors
             ]
         ]
         let total-neighbors length filter [ [coord] -> any? turtles-on patch (pxcor + item 0 coord) (pycor + item 1 coord) ] vision-field
-        if total-neighbors > 0 and standing-neighbors / total-neighbors >= seuil-supporter * seuil-individuel [
+        if total-neighbors > 0 and standing-neighbors / total-neighbors >= max (list 0.1 (seuil-supporter * seuil-individuel - (0.05 * memory-wave-participation)))[
           set standing? true
           set color red
+          set memory-wave-participation memory-wave-participation + 1
         ]
       ]
     ]
@@ -225,6 +228,7 @@ to maybe-trigger-wave
           set color red
           set time-standing 0
           set cooldown 0
+          set memory-wave-participation memory-wave-participation + 1
         ]
       ]
     ]
@@ -242,11 +246,11 @@ end
 GRAPHICS-WINDOW
 511
 34
-1010
-434
+1043
+465
 -1
 -1
-2.94012
+6.3133
 1
 10
 1
@@ -256,10 +260,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--83
-83
--66
-66
+-41
+41
+-33
+33
 0
 0
 1
@@ -469,7 +473,7 @@ enthousiasme
 enthousiasme
 0
 3
-0.2
+1.1
 0.1
 1
 NIL
