@@ -1,18 +1,18 @@
 globals [
   score-violet
   score-orange
-
 ]
 
 breed [supporters supporter]
 
 supporters-own [
-  standing?              ; Variable pour indiquer si un supporter est debout
-  time-standing          ; Variable pour suivre le temps pendant lequel un supporter est debout
-  cooldown               ; Variable pour suivre le temps de cooldown avant de pouvoir se relever
-  vision-field           ; Variable pour stocker le champ de vision du supporter
-  type-supporter         ; Type du supporter (ex: "enthousiaste", "moyen", "passif")
-  seuil-individuel       ; Seuil personnel pour se lever
+  standing?                 ; Variable pour indiquer si un supporter est debout
+  time-standing             ; Variable pour suivre le temps pendant lequel un supporter est debout
+  cooldown                  ; Variable pour suivre le temps de cooldown avant de pouvoir se relever
+  vision-field              ; Variable pour stocker le champ de vision du supporter
+  type-supporter            ; Type du supporter (ex: "enthousiaste", "moyen", "passif")
+  seuil-individuel          ; Seuil personnel pour se lever
+  fatigue                   ; Fatigue pour ola d'affilé
 ]
 
 breed [joueurs joueur]
@@ -61,6 +61,7 @@ to setup-agents
       set standing? false  ; Initialement, tous les supporters sont assis
       set time-standing 0  ; Initialiser le temps debout
       set cooldown 0  ; Initialiser le cooldown
+      set fatigue 0
       ; Définir le champ de vision en fonction de la zone
       ifelse (pcolor <= 15 and pcolor >= 14) [ ; rouge - en haut (a gauche et en dessous)
         set vision-field [
@@ -164,7 +165,7 @@ end
 
 to update-standing-supporters
   ask supporters [
-    if standing? [
+    ifelse standing? [
       set time-standing time-standing + 1
       set color red
       ; Si le supporter est debout depuis un certain temps, il se rassoit
@@ -173,6 +174,11 @@ to update-standing-supporters
         set color blue
         set time-standing 0
         set cooldown cooldown-apres-debout  ; Temps de cooldown avant de pouvoir se relever
+      ]
+    ]
+    [
+      if fatigue > 0 [
+        set fatigue max list (fatigue - fatigue-recovery-rate) 0
       ]
     ]
   ]
@@ -194,15 +200,16 @@ to check-neighbors
             let posY item 1 pos
             let neighbor patch (pxcor + posX) (pycor + posY)
             if any? turtles-on neighbor [
-              ask turtles-on neighbor [
+              ask supporters-on neighbor [
                 if standing? [ set standing-neighbors standing-neighbors + 1 ]
               ]
             ]
         ]
         let total-neighbors length filter [ [coord] -> any? turtles-on patch (pxcor + item 0 coord) (pycor + item 1 coord) ] vision-field
-        if total-neighbors > 0 and standing-neighbors / total-neighbors >= seuil-supporter * seuil-individuel [
+        if total-neighbors > 0 and standing-neighbors / total-neighbors >= (seuil-supporter * seuil-individuel + (0.04 * fatigue))[
           set standing? true
           set color red
+          set fatigue min list (fatigue + fatigue-increase) 1
         ]
       ]
     ]
@@ -225,6 +232,7 @@ to maybe-trigger-wave
           set color red
           set time-standing 0
           set cooldown 0
+          set fatigue min list (fatigue + fatigue-increase) 1
         ]
       ]
     ]
@@ -242,11 +250,11 @@ end
 GRAPHICS-WINDOW
 511
 34
-1010
-434
+1043
+465
 -1
 -1
-2.94012
+6.3133
 1
 10
 1
@@ -256,10 +264,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--83
-83
--66
-66
+-41
+41
+-33
+33
 0
 0
 1
@@ -312,10 +320,10 @@ NIL
 1
 
 SLIDER
-295
-212
-467
-245
+104
+301
+276
+334
 seuil-supporter
 seuil-supporter
 0
@@ -327,10 +335,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-295
-252
-467
-285
+104
+341
+276
+374
 temps-debout
 temps-debout
 0
@@ -342,15 +350,15 @@ NIL
 HORIZONTAL
 
 SLIDER
-281
-293
-486
-326
+103
+380
+308
+413
 cooldown-apres-debout
 cooldown-apres-debout
 0
 300
-76.0
+84.0
 1
 1
 NIL
@@ -365,7 +373,7 @@ proba-demarrage
 proba-demarrage
 0
 1
-0.35
+0.46
 0.01
 1
 %
@@ -409,10 +417,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-85
-363
-257
-396
+105
+59
+277
+92
 scoring-prob
 scoring-prob
 0
@@ -424,10 +432,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-82
-420
-254
-453
+102
+416
+274
+449
 ola-prob
 ola-prob
 0
@@ -461,16 +469,46 @@ score-orange
 11
 
 SLIDER
-1126
-258
-1298
-291
+101
+531
+273
+564
 enthousiasme
 enthousiasme
 0
 3
-0.2
+1.1
 0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+101
+456
+303
+489
+fatigue-recovery-rate
+fatigue-recovery-rate
+0.001
+0.05
+0.018
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+101
+493
+383
+526
+fatigue-increase
+fatigue-increase
+0.01
+0.1
+0.05
+0.01
 1
 NIL
 HORIZONTAL
