@@ -1,12 +1,12 @@
 globals [
   score-violet
-  score-orange
-  nombre-de-tours          ; Nouveau: compteur de tours de la ola
-  vitesse-moyenne          ; Nouveau: vitesse moyenne en ticks par tour
-  supporter-temoin         ; Nouveau: référence au supporter témoin
-  tick-dernier-tour        ; Nouveau: tick du dernier tour complet
-  tick-debut-ola           ; Nouveau: tick de début de la ola
-  somme-durees-tours       ; Nouveau: pour calculer la moyenne
+  score-yellow
+  nombre-de-tours          ; compteur de tours de la ola
+  vitesse-moyenne          ; vitesse moyenne en ticks par tour
+  supporter-temoin         ; référence au supporter témoin
+  tick-dernier-tour        ; tick du dernier tour complet
+  tick-debut-ola           ; tick de début de la ola
+  somme-durees-tours       ; pour calculer la moyenne
   temoin-debout-precedent?
 ]
 
@@ -42,12 +42,12 @@ to setup-joueurs
   let libres patches with [
     pcolor = 63.7 and not any? joueurs-here
   ]
-  let oranges n-of 11 libres
-  ask oranges [
+  let yellows n-of 11 libres
+  ask yellows [
     sprout-joueurs 1 [
-      set team "orange"
+      set team "yellow"
       set shape "person"
-      set color orange
+      set color yellow
     ]
   ]
 end
@@ -61,7 +61,7 @@ to setup-agents
   ] [
     sprout-supporters 1 [
       set color blue
-      set shape "person"
+      set shape "square"
       set standing? false
       set time-standing 0
       set cooldown 0
@@ -83,14 +83,14 @@ to setup-agents
       let val rand * enthousiasme
       ifelse val >= 0.8 [
         set type-supporter "enthousiaste"
-        set seuil-individuel seuil-supporter - 0.05
+        set seuil-individuel seuil-supporter - 0.07
       ] [
         ifelse val >= 0.3 [
           set type-supporter "moyen"
           set seuil-individuel seuil-supporter
         ] [
           set type-supporter "passif"
-          set seuil-individuel seuil-supporter + 0.05
+          set seuil-individuel seuil-supporter + 0.07
         ]
       ]
       let rand-team random-float 1
@@ -99,12 +99,11 @@ to setup-agents
           set equipe "violet"
           set color violet
         ] [
-          set equipe "orange"
-          set color orange
+          set equipe "yellow"
+          set color yellow
         ]
       ] [
         set equipe "neutre"
-        set color blue
       ]
     ]
   ]
@@ -117,7 +116,7 @@ to setup
   import-pcolors "Stade.png"
   setup-joueurs
   set score-violet 0
-  set score-orange 0
+  set score-yellow 0
 
   set nombre-de-tours 0
   set vitesse-moyenne 0
@@ -152,10 +151,10 @@ to maybe-trigger-ola
     set somme-durees-tours 0
 
     if random-float 1 < proba-demarrage [
-      let desired-size (min-group-size + random (max-group-size - min-group-size + 1))
+      let desired-size (min-taille-groupe + random (max-taille-groupe - min-taille-groupe + 1))
       let seed one-of supporters
-      let local-group supporters with [ distance seed <= start-radius ]
-      if count local-group >= min-group-size [
+      let local-group supporters with [ distance seed <= rayon ]
+      if count local-group >= min-taille-groupe [
         let actual-size min (list (count local-group) desired-size)
         ask n-of actual-size local-group [
           set standing? true
@@ -181,23 +180,23 @@ to update-match
     ]
   ]
   let svbefore score-violet
-  let sobefore score-orange
+  let sobefore score-yellow
   ask joueurs [
-    if random-float 1 < scoring-prob * 0.1 [
+    if random-float 1 < proba-but * 0.1 [
       ifelse team = "violet" [
         set score-violet score-violet + 1
       ] [
-        set score-orange score-orange + 1
+        set score-yellow score-yellow + 1
       ]
     ]
   ]
-  if svbefore != score-violet or sobefore != score-orange [
+  if svbefore != score-violet or sobefore != score-yellow [
     let delta-v (score-violet - svbefore)
-    let delta-o (score-orange - sobefore)
+    let delta-o (score-yellow - sobefore)
     ask supporters with [equipe = "violet"] [
       set seuil-individuel seuil-individuel + delta-o * effet-equipe * 0.1 - delta-v * effet-equipe * 0.1
     ]
-    ask supporters with [equipe = "orange"] [
+    ask supporters with [equipe = "yellow"] [
       set seuil-individuel seuil-individuel + delta-v * effet-equipe * 0.1 - delta-o * effet-equipe * 0.1
     ]
   ]
@@ -210,7 +209,7 @@ to update-standing-supporters
       set color red
       if time-standing >= temps-debout [
         set standing? false
-        if equipe = "orange" [set color orange]
+        if equipe = "yellow" [set color yellow]
         if equipe = "violet" [set color violet]
         if equipe = "neutre" [set color blue]
         set time-standing 0
@@ -222,7 +221,7 @@ end
 
 to spread-ola
   ask supporters [
-    if not standing? and max-tours > 0 [
+    if not standing? and (max-tours > 0 or not fatigue-active?) [
       ifelse cooldown > 0 [
         set cooldown cooldown - 1
       ] [
@@ -282,13 +281,13 @@ to track-ola-progress
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-536
-27
-981
-384
+470
+21
+1212
+615
 -1
 -1
-2.62
+4.4
 1
 10
 1
@@ -326,10 +325,10 @@ NIL
 1
 
 MONITOR
-1168
-10
 1304
-55
+82
+1432
+127
 Nombre supporters
 count supporters
 17
@@ -354,25 +353,25 @@ NIL
 1
 
 SLIDER
-295
-212
-467
-245
+209
+88
+381
+121
 seuil-supporter
 seuil-supporter
 0
 1
-0.3
+0.35
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-295
-252
-467
-285
+210
+125
+382
+158
 temps-debout
 temps-debout
 0
@@ -384,10 +383,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-281
-293
-486
-326
+210
+163
+383
+196
 cooldown-apres-debout
 cooldown-apres-debout
 0
@@ -418,23 +417,23 @@ SLIDER
 88
 182
 121
-start-radius
-start-radius
+rayon
+rayon
 1
 10
-4.0
+5.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-85
-363
-257
-396
-scoring-prob
-scoring-prob
+14
+338
+186
+371
+proba-but
+proba-but
 0
 1
 0.1
@@ -443,26 +442,11 @@ scoring-prob
 NIL
 HORIZONTAL
 
-SLIDER
-82
-420
-254
-453
-ola-prob
-ola-prob
-0
-1
-0.6
-0.1
-1
-NIL
-HORIZONTAL
-
 MONITOR
-1091
-114
-1230
-159
+1537
+44
+1665
+89
 Score équipe violet
 score-violet
 17
@@ -470,21 +454,21 @@ score-violet
 11
 
 MONITOR
-1236
-117
-1386
-162
-Score équipe orange
-score-orange
+1683
+44
+1820
+89
+Score équipe jaune
+score-yellow
 17
 1
 11
 
 SLIDER
-297
-349
-469
+210
+200
 382
+233
 enthousiasme
 enthousiasme
 0
@@ -496,10 +480,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-1161
-168
-1311
-213
+1304
+145
+1432
+190
 Supporters debouts
 count supporters with [standing?]
 17
@@ -507,25 +491,25 @@ count supporters with [standing?]
 11
 
 SLIDER
-303
-410
-475
-443
+14
+299
+186
+332
 effet-equipe
 effet-equipe
 0
-3
-0.5
+1
+0.3
 0.1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-1096
-63
-1222
-108
+1537
+107
+1665
+152
 Supporters violets
 count supporters with [equipe = \"violet\"]
 17
@@ -533,44 +517,44 @@ count supporters with [equipe = \"violet\"]
 11
 
 MONITOR
-1241
-63
-1377
-108
-Supporters oranges
-count supporters with [equipe = \"orange\"]
+1683
+107
+1820
+152
+Supporters jaunes
+count supporters with [equipe = \"yellow\"]
 17
 1
 11
 
 MONITOR
-1071
-231
-1251
-276
-Supporters violets debouts
+1537
+171
+1665
+216
+Supp. violets debouts
 count supporters with [equipe = \"violet\" and standing?]
 17
 1
 11
 
 MONITOR
-1270
-233
-1460
-278
-Supporters oranges debouts
-count supporters with [equipe = \"orange\" and standing?]
+1683
+171
+1829
+216
+Supp. jaunes debouts
+count supporters with [equipe = \"jaune\" and standing?]
 17
 1
 11
 
 PLOT
-1119
-324
-1319
-474
-plot 1
+1528
+234
+1830
+414
+Nombre de supporters debout (par equipes)
 NIL
 NIL
 0.0
@@ -581,45 +565,14 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -817084 true "" "plot count supporters with [equipe = \"orange\" and standing?]"
-"pen-1" 1.0 0 -8630108 true "" "plot count supporters with [equipe = \"violet\" and standing?]"
-"pen-2" 1.0 0 -13345367 true "" "plot count supporters with [equipe = \"neutre\" and standing?]"
-
-SLIDER
-78
-506
-250
-539
-largeur-cv
-largeur-cv
-0
-100
-50.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-313
-541
-485
-574
-longueur-cv
-longueur-cv
-0
-100
-50.0
-1
-1
-NIL
-HORIZONTAL
+"Jaune" 1.0 0 -1184463 true "" "plot count supporters with [equipe = \"yellow\" and standing?]"
+"Violet" 1.0 0 -8630108 true "" "plot count supporters with [equipe = \"violet\" and standing?]"
 
 SWITCH
-404
-657
-551
-690
+223
+300
+370
+333
 equipe-active?
 equipe-active?
 1
@@ -627,42 +580,12 @@ equipe-active?
 -1000
 
 SLIDER
-155
-650
-327
-683
-fatigue-increase
-fatigue-increase
-0
-1
-0.5
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-210
-717
-398
-750
-fatigue-recovery-rate
-fatigue-recovery-rate
-0.01
-1
-0.28
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
 10
 163
 182
 196
-min-group-size
-min-group-size
+min-taille-groupe
+min-taille-groupe
 0
 100
 24.0
@@ -676,8 +599,8 @@ SLIDER
 200
 181
 233
-max-group-size
-max-group-size
+max-taille-groupe
+max-taille-groupe
 0
 100
 50.0
@@ -696,29 +619,11 @@ Démarrage de la Ola
 0.0
 1
 
-PLOT
-1137
-572
-1337
-722
-plot 2
-NIL
-NIL
-0.0
-100.0
-0.0
-100.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot ([fatigue] of supporter 0) * 100"
-
 MONITOR
-1094
-495
-1218
-540
+1301
+246
+1429
+291
 Nombre de tours
 nombre-de-tours - 1
 17
@@ -726,15 +631,86 @@ nombre-de-tours - 1
 11
 
 MONITOR
-1250
-496
-1369
-541
+1301
+310
+1429
+355
 NIL
 vitesse-moyenne
 17
 1
 11
+
+SWITCH
+223
+338
+371
+371
+fatigue-active?
+fatigue-active?
+1
+1
+-1000
+
+TEXTBOX
+231
+278
+381
+296
+Options supplémentaires
+11
+0.0
+1
+
+TEXTBOX
+32
+274
+182
+293
+Paramètres match
+15
+0.0
+1
+
+TEXTBOX
+214
+63
+385
+85
+Paramètres supporters
+15
+0.0
+1
+
+TEXTBOX
+1309
+51
+1429
+70
+Infos supporters
+15
+0.0
+1
+
+TEXTBOX
+1330
+217
+1396
+236
+Infos Ola
+15
+0.0
+1
+
+TEXTBOX
+1625
+14
+1722
+33
+Infos Equipes
+15
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
