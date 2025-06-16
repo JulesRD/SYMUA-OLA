@@ -1,32 +1,36 @@
 globals [
   score-violet
   score-orange
-
+  nombre-de-tours          ; Nouveau: compteur de tours de la ola
+  vitesse-moyenne          ; Nouveau: vitesse moyenne en ticks par tour
+  supporter-temoin         ; Nouveau: référence au supporter témoin
+  tick-dernier-tour        ; Nouveau: tick du dernier tour complet
+  tick-debut-ola           ; Nouveau: tick de début de la ola
+  somme-durees-tours       ; Nouveau: pour calculer la moyenne
+  temoin-debout-precedent?
 ]
 
 breed [supporters supporter]
 
 supporters-own [
-  standing?              ; Variable pour indiquer si un supporter est debout
-  time-standing          ; Variable pour suivre le temps pendant lequel un supporter est debout
-  cooldown               ; Variable pour suivre le temps de cooldown avant de pouvoir se relever
-  vision-field           ; Variable pour stocker le champ de vision du supporter
-  type-supporter         ; Type du supporter (ex: "enthousiaste", "moyen", "passif")
-  seuil-individuel       ; Seuil personnel pour se lever
+  standing?
+  time-standing
+  cooldown
+  vision-field
+  type-supporter
+  seuil-individuel
+  equipe
+  max-tours
 ]
 
 breed [joueurs joueur]
+
 joueurs-own [
-  team               ; "violet" ou "orange"
+  team
 ]
 
-
 to setup-joueurs
-  ;; 1) sélectionner tous les patchs verts
   let verts patches with [pcolor = 63.7]
-
-  ;; 2) placer les violets
-
   let violets n-of 11 verts
   ask violets [
     sprout-joueurs 1 [
@@ -35,13 +39,9 @@ to setup-joueurs
       set color violet
     ]
   ]
-
-  ;; 3) re-filtrer les verts (ceux-là n'ont pas encore de joueur)
   let libres patches with [
     pcolor = 63.7 and not any? joueurs-here
   ]
-
-  ;; 4) placer les oranges
   let oranges n-of 11 libres
   ask oranges [
     sprout-joueurs 1 [
@@ -52,46 +52,30 @@ to setup-joueurs
   ]
 end
 
-
 to setup-agents
-  ask patches with [(pcolor <= 15 and pcolor >= 14) or (pcolor <= 65 and pcolor >= 64) or (pcolor <= 105 and pcolor >= 104) or pcolor = black] [
+  ask patches with [
+    (pcolor <= 15 and pcolor >= 14) or
+    (pcolor <= 65 and pcolor >= 64) or
+    (pcolor <= 105 and pcolor >= 104) or
+    pcolor = black
+  ] [
     sprout-supporters 1 [
-      set color blue  ; Vous pouvez définir la couleur de l'agent ici
-      set shape "person"  ; Vous pouvez définir la forme de l'agent ici
-      set standing? false  ; Initialement, tous les supporters sont assis
-      set time-standing 0  ; Initialiser le temps debout
-      set cooldown 0  ; Initialiser le cooldown
-      ; Définir le champ de vision en fonction de la zone
-      ifelse (pcolor <= 15 and pcolor >= 14) [ ; rouge - en haut (a gauche et en dessous)
-        set vision-field [
-          [-2 1]  [-1 1]  [0 1]  [1 1]
-          [-2 0]  [-1 0]         [1 0]
-          [-2 -1] [-1 -1] [0 -1] [1 -1]
-          [-2 -2] [-1 -2] [0 -2] [1 -2]
-        ]
+      set color blue
+      set shape "person"
+      set standing? false
+      set time-standing 0
+      set cooldown 0
+      set max-tours (random 5) + 5
+      ifelse (pcolor <= 15 and pcolor >= 14) [
+        set vision-field [[-2 1] [-1 1] [0 1] [1 1] [-2 0] [-1 0] [1 0] [-2 -1] [-1 -1] [0 -1] [1 -1] [-2 -2] [-1 -2] [0 -2] [1 -2]]
       ] [
-        ifelse (pcolor <= 65 and pcolor >= 64) [ ; vert - droite (a gauche et au dessus)
-          set vision-field [
-            [-2 2]  [-1 2]  [0 2]  [1 2]
-            [-2 1]  [-1 1]  [0 1]  [1 1]
-            [-2 0]  [-1 0]         [1 0]
-            [-2 1]  [-1 1]  [0 1]  [1 1]
-          ]
+        ifelse (pcolor <= 65 and pcolor >= 64) [
+          set vision-field [[-2 2] [-1 2] [0 2] [1 2] [-2 1] [-1 1] [0 1] [1 1] [-2 0] [-1 0] [1 0] [-2 1] [-1 1] [0 1] [1 1]]
         ] [
-          ifelse (pcolor <= 105 and pcolor >= 104) [ ; bleu - gauche (a droite et en dessous)
-            set vision-field [
-              [-1 1]  [0 1]  [1 1]  [2 1]
-              [-1 0]         [1 0]  [2 0]
-              [-1 -1] [0 -1] [1 -1] [2 -1]
-              [-1 -2] [0 -2] [1 -2] [2 -2]
-            ]
+          ifelse (pcolor <= 105 and pcolor >= 104) [
+            set vision-field [[-1 1] [0 1] [1 1] [2 1] [-1 0] [1 0] [2 0] [-1 -1] [0 -1] [1 -1] [2 -1] [-1 -2] [0 -2] [1 -2] [2 -2]]
           ] [
-            set vision-field [ ; noir - en bas (a droite et au dessus)
-              [-1 2]  [0 2]  [1 2]  [2 2]
-              [-1 1]  [0 1]  [1 1]  [2 1]
-              [-1 0]         [1 0]  [2 0]
-              [-1 -1] [0 -1] [1 -1] [2 -1]
-            ]
+            set vision-field [[-1 2] [0 2] [1 2] [2 2] [-1 1] [0 1] [1 1] [2 1] [-1 0] [1 0] [2 0] [-1 -1] [0 -1] [1 -1] [2 -1]]
           ]
         ]
       ]
@@ -99,125 +83,78 @@ to setup-agents
       let val rand * enthousiasme
       ifelse val >= 0.8 [
         set type-supporter "enthousiaste"
-        set seuil-individuel 0.5
+        set seuil-individuel seuil-supporter - 0.05
       ] [
         ifelse val >= 0.3 [
           set type-supporter "moyen"
-          set seuil-individuel 1
+          set seuil-individuel seuil-supporter
         ] [
           set type-supporter "passif"
-          set seuil-individuel 1.5
+          set seuil-individuel seuil-supporter + 0.05
         ]
+      ]
+      let rand-team random-float 1
+      ifelse equipe-active? [
+        ifelse rand-team >= 0.5 [
+          set equipe "violet"
+          set color violet
+        ] [
+          set equipe "orange"
+          set color orange
+        ]
+      ] [
+        set equipe "neutre"
+        set color blue
       ]
     ]
   ]
 end
 
-
-
 to setup
   clear-all
-  import-pcolors "Stade_Zones.png"  ; Charger l'image des zones du stade
+  import-pcolors "Stade_Zones.png"
   setup-agents
-  import-pcolors "Stade.png"  ; Charger l'image du stade normal
+  import-pcolors "Stade.png"
   setup-joueurs
-
   set score-violet 0
   set score-orange 0
 
+  set nombre-de-tours 0
+  set vitesse-moyenne 0
+  set supporter-temoin nobody
+  set tick-dernier-tour 0
+  set tick-debut-ola 0
+  set somme-durees-tours 0
+  set temoin-debout-precedent? false
   reset-ticks
 end
 
 to go
-  ;; déplacement des joueurs
-  ask joueurs [
-    ;; direction aléatoire
-    right random 360
-    ;; avancer 1 seulement si sur un patch vert
-    let dest patch-ahead 3
-    if dest != nobody and [pcolor] of dest = 63.7 [
-      move-to dest
-    ]
-  ]
-
- ;; tentative de but
- ask joueurs [
-  if random-float 1 < scoring-prob [
-    ;; on incrémente le score selon l’équipe
-    ifelse team = "violet" [
-      set score-violet score-violet + 1
-    ] [
-      set score-orange score-orange + 1
-    ]
-    ;; déclenchement éventuel de la ola
-    if random-float 1 < ola-prob [
-      maybe-trigger-wave
-    ]
-  ]
-]
-
-  update-seuils-individuels
+  maybe-trigger-ola
+  update-match
   update-standing-supporters
-  check-neighbors
+  spread-ola
+  track-ola-progress    ; Nouveau: suivi des tours de la ola
   tick
 end
 
-to update-standing-supporters
-  ask supporters [
-    if standing? [
-      set time-standing time-standing + 1
-      set color red
-      ; Si le supporter est debout depuis un certain temps, il se rassoit
-      if time-standing >= temps-debout [
-        set standing? false
-        set color blue
-        set time-standing 0
-        set cooldown cooldown-apres-debout  ; Temps de cooldown avant de pouvoir se relever
-      ]
-    ]
-  ]
-end
-
-to check-neighbors
-  ask supporters [
-    if not standing? [
-      ; Si le supporter est en cooldown, il ne peut pas se relever
-      ifelse cooldown > 0 [
-        set cooldown cooldown - 1
-      ]
-      [
-        ; Calculer la proportion de voisins debout dans le champ de vision
-        let standing-neighbors 0
-        foreach vision-field [
-          [pos] ->
-            let posX item 0 pos
-            let posY item 1 pos
-            let neighbor patch (pxcor + posX) (pycor + posY)
-            if any? turtles-on neighbor [
-              ask turtles-on neighbor [
-                if standing? [ set standing-neighbors standing-neighbors + 1 ]
-              ]
-            ]
-        ]
-        let total-neighbors length filter [ [coord] -> any? turtles-on patch (pxcor + item 0 coord) (pycor + item 1 coord) ] vision-field
-        if total-neighbors > 0 and standing-neighbors / total-neighbors >= seuil-supporter * seuil-individuel [
-          set standing? true
-          set color red
-        ]
-      ]
-    ]
-  ]
-end
-
-to maybe-trigger-wave
+to maybe-trigger-ola
   if not any? supporters with [standing?] [
+    ask supporters [
+      set max-tours (random 5) + 5
+    ]
+    ; Nouveau: réinitialisation des variables de suivi pour une nouvelle ola
+    set nombre-de-tours 0
+    set vitesse-moyenne 0
+    set supporter-temoin nobody
+    set tick-dernier-tour 0
+    set tick-debut-ola 0
+    set somme-durees-tours 0
+
     if random-float 1 < proba-demarrage [
       let desired-size (min-group-size + random (max-group-size - min-group-size + 1))
-      ;; on choisit d'abord un supporter « seed »
       let seed one-of supporters
-      ;; on récupère tous les supporters dans un rayon start-radius autour de seed :
       let local-group supporters with [ distance seed <= start-radius ]
-      ;; on vérifie qu'il y en a au moins min-group-size :
       if count local-group >= min-group-size [
         let actual-size min (list (count local-group) desired-size)
         ask n-of actual-size local-group [
@@ -226,27 +163,132 @@ to maybe-trigger-wave
           set time-standing 0
           set cooldown 0
         ]
+        ; Nouveau: définir le supporter témoin et initialiser le suivi
+        set supporter-temoin seed
+        set tick-debut-ola ticks
+        set tick-dernier-tour ticks
       ]
     ]
   ]
 end
 
-to update-seuils-individuels
+to update-match
+  ask joueurs [
+    right random 360
+    let dest patch-ahead 3
+    if dest != nobody and [pcolor] of dest = 63.7 [
+      move-to dest
+    ]
+  ]
+  let svbefore score-violet
+  let sobefore score-orange
+  ask joueurs [
+    if random-float 1 < scoring-prob * 0.1 [
+      ifelse team = "violet" [
+        set score-violet score-violet + 1
+      ] [
+        set score-orange score-orange + 1
+      ]
+    ]
+  ]
+  if svbefore != score-violet or sobefore != score-orange [
+    let delta-v (score-violet - svbefore)
+    let delta-o (score-orange - sobefore)
+    ask supporters with [equipe = "violet"] [
+      set seuil-individuel seuil-individuel + delta-o * effet-equipe * 0.1 - delta-v * effet-equipe * 0.1
+    ]
+    ask supporters with [equipe = "orange"] [
+      set seuil-individuel seuil-individuel + delta-v * effet-equipe * 0.1 - delta-o * effet-equipe * 0.1
+    ]
+  ]
+end
+
+to update-standing-supporters
   ask supporters [
-    if seuil-individuel < 1 [
-      set seuil-individuel min (list 1 (seuil-individuel + 0.005))
+    if standing? [
+      set time-standing time-standing + 1
+      set color red
+      if time-standing >= temps-debout [
+        set standing? false
+        if equipe = "orange" [set color orange]
+        if equipe = "violet" [set color violet]
+        if equipe = "neutre" [set color blue]
+        set time-standing 0
+        set cooldown cooldown-apres-debout
+      ]
+    ]
+  ]
+end
+
+to spread-ola
+  ask supporters [
+    if not standing? and max-tours > 0 [
+      ifelse cooldown > 0 [
+        set cooldown cooldown - 1
+      ] [
+        let standing-neighbors 0
+        foreach vision-field [ [pos] ->
+          let posX item 0 pos
+          let posY item 1 pos
+          let neighbor patch (pxcor + posX) (pycor + posY)
+          if any? supporters-on neighbor [
+            ask supporters-on neighbor [
+              if standing? [ set standing-neighbors standing-neighbors + 1 ]
+            ]
+          ]
+        ]
+        let total-neighbors length filter [ [coord] -> any? turtles-on patch (pxcor + item 0 coord) (pycor + item 1 coord) ] vision-field
+        if total-neighbors > 0 and standing-neighbors / total-neighbors >= seuil-individuel[
+          set standing? true
+          set max-tours max-tours - 1
+          set color red
+        ]
+      ]
+    ]
+  ]
+end
+
+; Nouveau: procédure pour suivre les tours de la ola
+to track-ola-progress
+  if supporter-temoin != nobody [
+    ; Suivre le supporter témoin
+    ask supporter-temoin [
+      ; Détecter une transition: était debout précédemment, ne l'est plus maintenant, et se lève à nouveau
+      if temoin-debout-precedent? and not standing? [
+        set temoin-debout-precedent? false
+      ]
+
+      ; Si le témoin se lève après avoir été assis, c'est un nouveau tour
+      if not temoin-debout-precedent? and standing? [
+        set temoin-debout-precedent? true
+
+        ; Compter un nouveau tour (sauf pour le premier qui est le démarrage)
+        if nombre-de-tours > 0 [
+          let duree-tour (ticks - tick-dernier-tour)
+          set somme-durees-tours somme-durees-tours + duree-tour
+          set vitesse-moyenne (somme-durees-tours / nombre-de-tours)
+          set tick-dernier-tour ticks
+        ]
+
+        set nombre-de-tours nombre-de-tours + 1
+
+        ; Pour le premier tour, on initialise juste le tick de référence
+        if nombre-de-tours = 1 [
+          set tick-dernier-tour ticks
+        ]
+      ]
     ]
   ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-511
-34
-1010
-434
+536
+27
+981
+384
 -1
 -1
-2.94012
+2.62
 1
 10
 1
@@ -267,10 +309,10 @@ ticks
 30.0
 
 BUTTON
-364
-51
-430
-84
+89
+10
+188
+47
 Setup
 setup
 NIL
@@ -284,21 +326,21 @@ NIL
 1
 
 MONITOR
-352
-140
-473
-185
-NIL
+1168
+10
+1304
+55
+Nombre supporters
 count supporters
 17
 1
 11
 
 BUTTON
-361
-89
-424
-122
+207
+10
+306
+47
 Go
 go
 T
@@ -320,7 +362,7 @@ seuil-supporter
 seuil-supporter
 0
 1
-0.5
+0.3
 0.01
 1
 NIL
@@ -335,7 +377,7 @@ temps-debout
 temps-debout
 0
 100
-6.0
+10.0
 1
 1
 NIL
@@ -350,17 +392,17 @@ cooldown-apres-debout
 cooldown-apres-debout
 0
 300
-76.0
+39.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-104
-132
-283
-165
+10
+125
+183
+158
 proba-demarrage
 proba-demarrage
 0
@@ -371,38 +413,16 @@ proba-demarrage
 %
 HORIZONTAL
 
-INPUTBOX
-105
-170
-254
-230
-min-group-size
-40.0
-1
-0
-Number
-
-INPUTBOX
-105
-234
-254
-294
-max-group-size
-100.0
-1
-0
-Number
-
 SLIDER
-105
-95
-277
-128
+10
+88
+182
+121
 start-radius
 start-radius
 1
 10
-5.0
+4.0
 1
 1
 NIL
@@ -417,7 +437,7 @@ scoring-prob
 scoring-prob
 0
 1
-0.03
+0.1
 0.01
 1
 NIL
@@ -439,10 +459,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-1095
-52
-1234
-97
+1091
+114
+1230
+159
 Score équipe violet
 score-violet
 17
@@ -450,10 +470,10 @@ score-violet
 11
 
 MONITOR
-1235
-52
-1385
-97
+1236
+117
+1386
+162
 Score équipe orange
 score-orange
 17
@@ -461,19 +481,260 @@ score-orange
 11
 
 SLIDER
-1126
-258
-1298
-291
+297
+349
+469
+382
 enthousiasme
 enthousiasme
 0
 3
-0.2
+0.5
 0.1
 1
 NIL
 HORIZONTAL
+
+MONITOR
+1161
+168
+1311
+213
+Supporters debouts
+count supporters with [standing?]
+17
+1
+11
+
+SLIDER
+303
+410
+475
+443
+effet-equipe
+effet-equipe
+0
+3
+0.5
+0.1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+1096
+63
+1222
+108
+Supporters violets
+count supporters with [equipe = \"violet\"]
+17
+1
+11
+
+MONITOR
+1241
+63
+1377
+108
+Supporters oranges
+count supporters with [equipe = \"orange\"]
+17
+1
+11
+
+MONITOR
+1071
+231
+1251
+276
+Supporters violets debouts
+count supporters with [equipe = \"violet\" and standing?]
+17
+1
+11
+
+MONITOR
+1270
+233
+1460
+278
+Supporters oranges debouts
+count supporters with [equipe = \"orange\" and standing?]
+17
+1
+11
+
+PLOT
+1119
+324
+1319
+474
+plot 1
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -817084 true "" "plot count supporters with [equipe = \"orange\" and standing?]"
+"pen-1" 1.0 0 -8630108 true "" "plot count supporters with [equipe = \"violet\" and standing?]"
+"pen-2" 1.0 0 -13345367 true "" "plot count supporters with [equipe = \"neutre\" and standing?]"
+
+SLIDER
+78
+506
+250
+539
+largeur-cv
+largeur-cv
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+313
+541
+485
+574
+longueur-cv
+longueur-cv
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+404
+657
+551
+690
+equipe-active?
+equipe-active?
+1
+1
+-1000
+
+SLIDER
+155
+650
+327
+683
+fatigue-increase
+fatigue-increase
+0
+1
+0.5
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+210
+717
+398
+750
+fatigue-recovery-rate
+fatigue-recovery-rate
+0.01
+1
+0.28
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+10
+163
+182
+196
+min-group-size
+min-group-size
+0
+100
+24.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+9
+200
+181
+233
+max-group-size
+max-group-size
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+24
+63
+174
+82
+Démarrage de la Ola
+15
+0.0
+1
+
+PLOT
+1137
+572
+1337
+722
+plot 2
+NIL
+NIL
+0.0
+100.0
+0.0
+100.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot ([fatigue] of supporter 0) * 100"
+
+MONITOR
+1094
+495
+1218
+540
+Nombre de tours
+nombre-de-tours - 1
+17
+1
+11
+
+MONITOR
+1250
+496
+1369
+541
+NIL
+vitesse-moyenne
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
