@@ -15,12 +15,13 @@ breed [supporters supporter]
 supporters-own [
   standing?
   time-standing
+  cooldown-supporter
   cooldown
   vision-field
   type-supporter
   seuil-individuel
   equipe
-  max-tours
+  nb-tours
 ]
 
 breed [joueurs joueur]
@@ -65,19 +66,65 @@ to setup-agents
       set standing? false
       set time-standing 0
       set cooldown 0
-      set max-tours (random 5) + 5
+      set nb-tours 0
+      ifelse grande-vision? [
       ifelse (pcolor <= 15 and pcolor >= 14) [
-        set vision-field [[-2 1] [-1 1] [0 1] [1 1] [-2 0] [-1 0] [1 0] [-2 -1] [-1 -1] [0 -1] [1 -1] [-2 -2] [-1 -2] [0 -2] [1 -2]]
+        set vision-field [[-3 1]  [-2 1]  [-1 1]  [0 1]  [1 1]
+                          [-3 0]  [-2 0]  [-1 0]         [1 0]
+                          [-3 -1] [-2 -1] [-1 -1] [0 -1] [1 -1]
+                          [-3 -2] [-2 -2] [-1 -2] [0 -2] [1 -2]
+                          [-3 -3] [-2 -3] [-1 -3] [0 -3] [1 -3]
+                          [-3 -4] [-2 -4] [-1 -4] [0 -4] [1 -4]] ; rouge haut
       ] [
         ifelse (pcolor <= 65 and pcolor >= 64) [
-          set vision-field [[-2 2] [-1 2] [0 2] [1 2] [-2 1] [-1 1] [0 1] [1 1] [-2 0] [-1 0] [1 0] [-2 1] [-1 1] [0 1] [1 1]]
+          set vision-field [[-4 3]  [-3 3]  [-2 3]  [-1 3]  [0 3]  [1 3]
+                            [-4 2]  [-3 2]  [-2 2]  [-1 2]  [0 2]  [1 2]
+                            [-4 1]  [-3 1]  [-2 1]  [-1 1]  [0 1]  [1 1]
+                            [-4 0]  [-3 0]  [-2 0]  [-1 0]         [1 0]
+                            [-4 -1] [-3 -1] [-2 -1] [-1 -1] [0 -1] [1 -1]] ; vert droite
         ] [
           ifelse (pcolor <= 105 and pcolor >= 104) [
-            set vision-field [[-1 1] [0 1] [1 1] [2 1] [-1 0] [1 0] [2 0] [-1 -1] [0 -1] [1 -1] [2 -1] [-1 -2] [0 -2] [1 -2] [2 -2]]
+            set vision-field [[-1 1]  [0 1]  [1 1]  [2 1]  [3 1]  [4 1]
+                              [-1 0]         [1 0]  [2 0]  [3 0]  [4 0]
+                              [-1 -1] [0 -1] [1 -1] [2 -1] [3 -1] [4 -1]
+                              [-1 -2] [0 -2] [1 -2] [2 -2] [3 -2] [4 -2]
+                              [-1 -3] [0 -3] [1 -3] [2 -3] [3 -3] [4 -3]] ; bleu gauche
           ] [
-            set vision-field [[-1 2] [0 2] [1 2] [2 2] [-1 1] [0 1] [1 1] [2 1] [-1 0] [1 0] [2 0] [-1 -1] [0 -1] [1 -1] [2 -1]]
+            set vision-field [[-1 4]  [0 4]  [1 4]  [2 4]  [3 4]
+                              [-1 3]  [0 3]  [1 3]  [2 3]  [3 3]
+                              [-1 2]  [0 2]  [1 2]  [2 2]  [3 2]
+                              [-1 1]  [0 1]  [1 1]  [2 1]  [3 1]
+                              [-1 0]         [1 0]  [2 0]  [3 0]
+                              [-1 -1] [0 -1] [1 -1] [2 -1] [3 -1]] ; noir bas
           ]
         ]
+      ]
+      ][
+      ifelse (pcolor <= 15 and pcolor >= 14) [
+        set vision-field [[-2 1]  [-1 1]  [0 1]  [1 1]
+                          [-2 0]  [-1 0]         [1 0]
+                          [-2 -1] [-1 -1] [0 -1] [1 -1]
+                          [-2 -2] [-1 -2] [0 -2] [1 -2]] ; rouge haut
+      ] [
+        ifelse (pcolor <= 65 and pcolor >= 64) [
+          set vision-field [[-2 2]  [-1 2]  [0 2]  [1 2]
+                            [-2 1]  [-1 1]  [0 1]  [1 1]
+                            [-2 0]  [-1 0]         [1 0]
+                            [-2 -1] [-1 -1] [0 -1] [1 -1]] ; vert droite
+        ] [
+          ifelse (pcolor <= 105 and pcolor >= 104) [
+            set vision-field [[-1 1]  [0 1]  [1 1]  [2 1]
+                              [-1 0]         [1 0]  [2 0]
+                              [-1 -1] [0 -1] [1 -1] [2 -1]
+                              [-1 -2] [0 -2] [1 -2] [2 -2]] ; bleu gauche
+          ] [
+            set vision-field [[-1 2]  [0 2]  [1 2]  [2 2]
+                              [-1 1]  [0 1]  [1 1]  [2 1]
+                              [-1 0]         [1 0]  [2 0]
+                              [-1 -1] [0 -1] [1 -1] [2 -1]] ; noir bas
+          ]
+        ]
+      ]
       ]
       let rand random-float 1
       let val rand * enthousiasme
@@ -140,7 +187,13 @@ end
 to maybe-trigger-ola
   if not any? supporters with [standing?] [
     ask supporters [
-      set max-tours (random 5) + 5
+      set nb-tours 0
+      set cooldown-supporter cooldown-apres-debout
+    ]
+    if supporter-temoin != nobody [
+      ask supporter-temoin [
+        set color blue
+      ]
     ]
     ; Nouveau: réinitialisation des variables de suivi pour une nouvelle ola
     set nombre-de-tours 0
@@ -160,7 +213,6 @@ to maybe-trigger-ola
           set standing? true
           set color red
           set time-standing 0
-          set cooldown 0
         ]
         ; Nouveau: définir le supporter témoin et initialiser le suivi
         set supporter-temoin seed
@@ -182,7 +234,7 @@ to update-match
   let svbefore score-violet
   let sobefore score-yellow
   ask joueurs [
-    if random-float 1 < proba-but * 0.1 [
+    if random-float 1 < proba-but * 0.01 [
       ifelse team = "violet" [
         set score-violet score-violet + 1
       ] [
@@ -213,7 +265,7 @@ to update-standing-supporters
         if equipe = "violet" [set color violet]
         if equipe = "neutre" [set color blue]
         set time-standing 0
-        set cooldown cooldown-apres-debout
+        set cooldown cooldown-supporter
       ]
     ]
   ]
@@ -221,7 +273,7 @@ end
 
 to spread-ola
   ask supporters [
-    if not standing? and (max-tours > 0 or not fatigue-active?) [
+    if not standing? [
       ifelse cooldown > 0 [
         set cooldown cooldown - 1
       ] [
@@ -239,7 +291,12 @@ to spread-ola
         let total-neighbors length filter [ [coord] -> any? turtles-on patch (pxcor + item 0 coord) (pycor + item 1 coord) ] vision-field
         if total-neighbors > 0 and standing-neighbors / total-neighbors >= seuil-individuel[
           set standing? true
-          set max-tours max-tours - 1
+          ifelse fatigue-active? [
+            set cooldown-supporter cooldown-apres-debout + nb-tours * (random force-fatigue)
+          ][
+            set cooldown-supporter cooldown-apres-debout
+          ]
+          set nb-tours nb-tours + 1
           set color red
         ]
       ]
@@ -252,6 +309,7 @@ to track-ola-progress
   if supporter-temoin != nobody [
     ; Suivre le supporter témoin
     ask supporter-temoin [
+      set color green
       ; Détecter une transition: était debout précédemment, ne l'est plus maintenant, et se lève à nouveau
       if temoin-debout-precedent? and not standing? [
         set temoin-debout-precedent? false
@@ -281,13 +339,13 @@ to track-ola-progress
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-470
-21
-1212
-615
+434
+10
+1360
+750
 -1
 -1
-4.4
+5.5
 1
 10
 1
@@ -325,10 +383,10 @@ NIL
 1
 
 MONITOR
-1304
-82
-1432
-127
+1365
+79
+1493
+124
 Nombre supporters
 count supporters
 17
@@ -361,7 +419,7 @@ seuil-supporter
 seuil-supporter
 0
 1
-0.35
+0.3
 0.01
 1
 NIL
@@ -376,7 +434,7 @@ temps-debout
 temps-debout
 0
 100
-10.0
+18.0
 1
 1
 NIL
@@ -391,7 +449,7 @@ cooldown-apres-debout
 cooldown-apres-debout
 0
 300
-39.0
+50.0
 1
 1
 NIL
@@ -406,7 +464,7 @@ proba-demarrage
 proba-demarrage
 0
 1
-0.35
+0.16
 0.01
 1
 %
@@ -421,7 +479,7 @@ rayon
 rayon
 1
 10
-5.0
+4.0
 1
 1
 NIL
@@ -443,10 +501,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-1537
-44
-1665
-89
+1598
+41
+1726
+86
 Score équipe violet
 score-violet
 17
@@ -454,10 +512,10 @@ score-violet
 11
 
 MONITOR
-1683
-44
-1820
-89
+1744
+41
+1881
+86
 Score équipe jaune
 score-yellow
 17
@@ -473,17 +531,17 @@ enthousiasme
 enthousiasme
 0
 3
-0.5
+1.0
 0.1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-1304
-145
-1432
-190
+1365
+142
+1493
+187
 Supporters debouts
 count supporters with [standing?]
 17
@@ -506,10 +564,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-1537
-107
-1665
-152
+1598
+104
+1726
+149
 Supporters violets
 count supporters with [equipe = \"violet\"]
 17
@@ -517,10 +575,10 @@ count supporters with [equipe = \"violet\"]
 11
 
 MONITOR
-1683
-107
-1820
-152
+1744
+104
+1881
+149
 Supporters jaunes
 count supporters with [equipe = \"yellow\"]
 17
@@ -528,10 +586,10 @@ count supporters with [equipe = \"yellow\"]
 11
 
 MONITOR
-1537
-171
-1665
-216
+1598
+168
+1726
+213
 Supp. violets debouts
 count supporters with [equipe = \"violet\" and standing?]
 17
@@ -539,10 +597,10 @@ count supporters with [equipe = \"violet\" and standing?]
 11
 
 MONITOR
-1683
-171
-1829
-216
+1744
+168
+1890
+213
 Supp. jaunes debouts
 count supporters with [equipe = \"jaune\" and standing?]
 17
@@ -550,10 +608,10 @@ count supporters with [equipe = \"jaune\" and standing?]
 11
 
 PLOT
-1528
-234
-1830
-414
+1589
+231
+1891
+411
 Nombre de supporters debout (par equipes)
 NIL
 NIL
@@ -588,7 +646,7 @@ min-taille-groupe
 min-taille-groupe
 0
 100
-24.0
+29.0
 1
 1
 NIL
@@ -603,7 +661,7 @@ max-taille-groupe
 max-taille-groupe
 0
 100
-50.0
+17.0
 1
 1
 NIL
@@ -620,10 +678,10 @@ Démarrage de la Ola
 1
 
 MONITOR
-1301
-246
-1429
-291
+1362
+243
+1490
+288
 Nombre de tours
 nombre-de-tours - 1
 17
@@ -631,10 +689,10 @@ nombre-de-tours - 1
 11
 
 MONITOR
-1301
-310
-1429
-355
+1362
+307
+1490
+352
 NIL
 vitesse-moyenne
 17
@@ -643,9 +701,9 @@ vitesse-moyenne
 
 SWITCH
 223
-338
-371
-371
+378
+370
+411
 fatigue-active?
 fatigue-active?
 1
@@ -683,32 +741,68 @@ Paramètres supporters
 1
 
 TEXTBOX
-1309
-51
-1429
-70
+1370
+48
+1490
+67
 Infos supporters
 15
 0.0
 1
 
 TEXTBOX
-1330
-217
-1396
-236
+1391
+214
+1457
+233
 Infos Ola
 15
 0.0
 1
 
 TEXTBOX
-1625
-14
-1722
-33
+1686
+11
+1783
+30
 Infos Equipes
 15
+0.0
+1
+
+SWITCH
+223
+339
+370
+372
+grande-vision?
+grande-vision?
+1
+1
+-1000
+
+SLIDER
+223
+417
+370
+450
+force-fatigue
+force-fatigue
+0
+50
+30.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+1078
+682
+1385
+780
+Légende:\nCarré bleu (ou couleur équipes) = supporter assis\nCarré rouge = supporter debout\nCarré verts = supporter témoin (origine de la ola)
+11
 0.0
 1
 
